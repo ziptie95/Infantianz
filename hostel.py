@@ -1,7 +1,22 @@
-import tkinter as tk
-from tkinter import messagebox
-from PIL import Image, ImageTk
-import time
+import kivy
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.popup import Popup
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.widget import Widget
+from kivy.uix.image import Image
+from kivy.uix.recycleview import RecycleView
+from kivy.uix.recycleview.layout import LayoutSelectionBehavior
+from kivy.uix.recycleview.views import RecycleDataViewBehavior
+from kivy.clock import Clock
+from kivy.core.window import Window
+import random
+
+kivy.require('2.1.0')  # Replace with the version you have installed
 
 # Room, Floor, Building, and Hostel Management System
 class Room:
@@ -51,16 +66,6 @@ class Hostel:
                         return room
         return None
 
-    def reallocate_room(self, student, new_room_type):
-        current_room = student.current_room
-        current_room.deallocate()
-
-        new_room = self.allocate_room(new_room_type)
-        if new_room:
-            student.current_room = new_room
-            return new_room
-        return None
-
     def get_room_report(self):
         report = []
         for building in self.buildings:
@@ -92,217 +97,131 @@ class Hostel:
             'Empty Rooms': empty_rooms
         }
 
-# GUI Interface Using Tkinter
-class HostelGUI:
-    def __init__(self, root, hostel):
-        self.root = root
-        self.root.title("Hostel Management System")
-        self.hostel = hostel
-        self.student_name = ""
-        self.current_room = None
+# RecycleView to display room data
+class RoomDataView(RecycleDataViewBehavior, Label):
+    pass
+
+class RoomListView(RecycleView):
+    def __init__(self, **kwargs):
+        super(RoomListView, self).__init__(**kwargs)
+        self.viewclass = RoomDataView
+        self.data = []
+
+    def update_data(self, report):
+        self.data = [{'text': f"Room {entry['Room Number']} ({entry['Room Type']}) - {entry['Status']}"} for entry in report]
+
+# Main App using Kivy
+class HostelApp(App):
+    def build(self):
+        self.hostel = Hostel()
         
-        self.create_widgets()
-        self.animate_logo()
+        # Building and Floor setup
+        building = Building("Building A")
+        floor1 = Floor(1)
+        floor2 = Floor(2)
 
-    def create_widgets(self):
-        # Background Image
-        self.bg_image = Image.open(r"background.png")  # Change to your image path
-        self.bg_image = self.bg_image.resize((800, 600), Image.Resampling.LANCZOS)
-        self.bg_image_tk = ImageTk.PhotoImage(self.bg_image)
+        # Add rooms for testing
+        for i in range(1, 51):
+            floor1.add_room(Room(i, "AC" if i % 2 == 0 else "NON-AC"))
+            floor2.add_room(Room(i + 50, "AC" if i % 2 != 0 else "NON-AC"))
 
-        bg_label = tk.Label(self.root, image=self.bg_image_tk)
-        bg_label.place(relwidth=1, relheight=1)
+        building.add_floor(floor1)
+        building.add_floor(floor2)
+
+        self.hostel.add_building(building)
+
+        # Create main layout
+        layout = BoxLayout(orientation="vertical", padding=10)
 
         # Title Label
-        title_label = tk.Label(self.root, text="Hostel Management System", font=("Arial", 24, 'bold'), bg="white", fg="black")
-        title_label.grid(row=0, column=0, columnspan=2, pady=10)
+        title_label = Label(text="Hostel Management System", font_size='24sp', size_hint=(1, None), height=50)
+        layout.add_widget(title_label)
 
         # Student name input
-        name_label = tk.Label(self.root, text="Student Name:", font=("Arial", 14), bg="white", fg="black")
-        name_label.grid(row=1, column=0, padx=10)
-        self.name_entry = tk.Entry(self.root, font=("Arial", 14))
-        self.name_entry.grid(row=1, column=1)
+        name_layout = BoxLayout(size_hint_y=None, height=50)
+        name_label = Label(text="Student Name:", font_size='18sp', size_hint=(0.3, 1))
+        self.name_input = TextInput(font_size='18sp', size_hint=(0.7, 1))
+        name_layout.add_widget(name_label)
+        name_layout.add_widget(self.name_input)
+        layout.add_widget(name_layout)
 
-        # Room Type selection
-        room_label = tk.Label(self.root, text="Room Type (AC or NON-AC):", font=("Arial", 14), bg="white", fg="black")
-        room_label.grid(row=2, column=0, padx=10)
-        self.room_type_entry = tk.Entry(self.root, font=("Arial", 14))
-        self.room_type_entry.grid(row=2, column=1)
+        # Room Type input
+        room_layout = BoxLayout(size_hint_y=None, height=50)
+        room_label = Label(text="Room Type (AC or NON-AC):", font_size='18sp', size_hint=(0.3, 1))
+        self.room_input = TextInput(font_size='18sp', size_hint=(0.7, 1))
+        room_layout.add_widget(room_label)
+        room_layout.add_widget(self.room_input)
+        layout.add_widget(room_layout)
 
         # Allocate Room Button
-        allocate_button = tk.Button(self.root, text="Allocate Room", font=("Arial", 14), command=self.allocate_room, bg="lightblue")
-        allocate_button.grid(row=3, column=0, columnspan=2, pady=10)
+        allocate_button = Button(text="Allocate Room", size_hint_y=None, height=50, font_size='18sp')
+        allocate_button.bind(on_press=self.allocate_room)
+        layout.add_widget(allocate_button)
 
         # Reallocate Room Button
-        reallocate_button = tk.Button(self.root, text="Reallocate Room", font=("Arial", 14), command=self.reallocate_room, bg="lightgreen")
-        reallocate_button.grid(row=4, column=0, columnspan=2, pady=10)
+        reallocate_button = Button(text="Reallocate Room", size_hint_y=None, height=50, font_size='18sp')
+        reallocate_button.bind(on_press=self.reallocate_room)
+        layout.add_widget(reallocate_button)
 
         # Report Button
-        report_button = tk.Button(self.root, text="Generate Room Report", font=("Arial", 14), command=self.show_report, bg="lightyellow")
-        report_button.grid(row=5, column=0, columnspan=2, pady=10)
+        report_button = Button(text="Generate Room Report", size_hint_y=None, height=50, font_size='18sp')
+        report_button.bind(on_press=self.show_report)
+        layout.add_widget(report_button)
 
         # Dashboard Button
-        dashboard_button = tk.Button(self.root, text="Show Dashboard", font=("Arial", 14), command=self.show_dashboard, bg="lightcoral")
-        dashboard_button.grid(row=6, column=0, columnspan=2, pady=10)
+        dashboard_button = Button(text="Show Dashboard", size_hint_y=None, height=50, font_size='18sp')
+        dashboard_button.bind(on_press=self.show_dashboard)
+        layout.add_widget(dashboard_button)
 
-        # Listbox to display room status
-        self.room_listbox = tk.Listbox(self.root, width=50, height=10, font=("Arial", 12))
-        self.room_listbox.grid(row=7, column=0, columnspan=2, pady=10)
+        # Scrollable list for displaying room status
+        self.room_list_view = RoomListView(size_hint=(1, 1), height=Window.height - 300)
+        layout.add_widget(self.room_list_view)
 
-    def allocate_room(self):
-        self.student_name = self.name_entry.get()
-        room_type = self.room_type_entry.get()
-        if not self.student_name or not room_type:
-            messagebox.showerror("Input Error", "Please enter both Student Name and Room Type.")
+        return layout
+
+    def allocate_room(self, instance):
+        student_name = self.name_input.text
+        room_type = self.room_input.text
+        if not student_name or not room_type:
+            self.show_popup("Input Error", "Please enter both Student Name and Room Type.")
             return
 
         room = self.hostel.allocate_room(room_type)
         if room:
-            self.current_room = room
-            self.animate_room_allocation(room)
-            messagebox.showinfo("Room Allocated", f"Room {room.room_number} ({room.room_type}) allocated to {self.student_name}.")
+            self.show_popup("Room Allocated", f"Room {room.room_number} ({room.room_type}) allocated to {student_name}.")
         else:
-            messagebox.showwarning("No Room Available", "No rooms of the preferred type are available.")
+            self.show_popup("No Room Available", "No rooms of the preferred type are available.")
 
-    def animate_room_allocation(self, room):
-        # Simple animation showing a "room allocated" effect
-        animation_label = tk.Label(self.root, text=f"Room {room.room_number} allocated!", font=("Arial", 16, 'bold'), fg="green", bg="lightyellow")
-        animation_label.grid(row=8, column=0, columnspan=2)
-        for i in range(255, -1, -5):  # Fade-out effect
-            animation_label.config(fg=f"#{i:02x}ff{i:02x}")
-            self.root.update_idletasks()
-            time.sleep(0.05)
-        animation_label.grid_forget()  # Hide the label after animation
-
-    def reallocate_room(self):
-        if not self.current_room:
-            messagebox.showerror("No Allocation", "No room allocated yet. Please allocate a room first.")
+    def reallocate_room(self, instance):
+        student_name = self.name_input.text
+        room_type = self.room_input.text
+        if not student_name or not room_type:
+            self.show_popup("Input Error", "Please enter both Student Name and Room Type.")
             return
 
-        new_room_type = self.room_type_entry.get()
-        if not new_room_type:
-            messagebox.showerror("Input Error", "Please enter a new room type.")
-            return
-
-        room = self.hostel.reallocate_room(self, new_room_type)
+        room = self.hostel.allocate_room(room_type)
         if room:
-            messagebox.showinfo("Room Reallocated", f"Reallocated to Room {room.room_number} ({room.room_type}).")
+            self.show_popup("Room Reallocated", f"Room {room.room_number} ({room.room_type}) reallocated to {student_name}.")
         else:
-            messagebox.showwarning("No Room Available", "No rooms of the preferred type are available for reallocation.")
+            self.show_popup("No Room Available", "No rooms of the preferred type are available.")
 
-    def show_report(self):
+    def show_report(self, instance):
         report = self.hostel.get_room_report()
-        self.room_listbox.delete(0, tk.END)
-        for entry in report:
-            self.room_listbox.insert(tk.END, f"Room {entry['Room Number']} ({entry['Room Type']}) - {entry['Status']}")
+        self.room_list_view.update_data(report)
 
-    def show_dashboard(self):
+    def show_dashboard(self, instance):
         dashboard = self.hostel.generate_dashboard()
-        self.room_listbox.delete(0, tk.END)
-        self.room_listbox.insert(tk.END, f"Total Rooms: {dashboard['Total Rooms']}")
-        self.room_listbox.insert(tk.END, f"Occupied Rooms: {dashboard['Occupied Rooms']}")
-        self.room_listbox.insert(tk.END, f"Empty Rooms: {dashboard['Empty Rooms']}")
+        report = [
+            {'Room Number': 'Total Rooms', 'Room Type': str(dashboard['Total Rooms']), 'Status': ''},
+            {'Room Number': 'Occupied Rooms', 'Room Type': str(dashboard['Occupied Rooms']), 'Status': ''},
+            {'Room Number': 'Empty Rooms', 'Room Type': str(dashboard['Empty Rooms']), 'Status': ''},
+        ]
+        self.room_list_view.update_data(report)
 
-    def animate_logo(self):
-        # Simple fade-in effect for the title label
-        title_label = tk.Label(self.root, text="Hostel Management System", font=("Arial", 24, 'bold'), fg="white")
-        title_label.grid(row=0, column=0, columnspan=2, pady=10)
-        title_label.config(fg="white")
-        for i in range(0, 101, 5):
-            title_label.config(fg=f"#{i:02x}ff{i:02x}")
-            self.root.update_idletasks()
-            time.sleep(0.05)
-
-# Login Screen
-class LoginScreen:
-    def __init__(self, root, hostel, users):
-        self.root = root
-        self.hostel = hostel
-        self.users = users
-        self.root.title("Login / Create Account")
-        self.create_widgets()
-
-    def create_widgets(self):
-        # Title Label
-        title_label = tk.Label(self.root, text="Login or Create Account", font=("Arial", 24), bg="lightblue", fg="black")
-        title_label.grid(row=0, column=0, columnspan=2, pady=10)
-
-        # Username input
-        username_label = tk.Label(self.root, text="Username:", font=("Arial", 14), bg="white")
-        username_label.grid(row=1, column=0, padx=10)
-        self.username_entry = tk.Entry(self.root, font=("Arial", 14))
-        self.username_entry.grid(row=1, column=1)
-
-        # Password input
-        password_label = tk.Label(self.root, text="Password:", font=("Arial", 14), bg="white")
-        password_label.grid(row=2, column=0, padx=10)
-        self.password_entry = tk.Entry(self.root, show="*", font=("Arial", 14))
-        self.password_entry.grid(row=2, column=1)
-
-        # Buttons
-        login_button = tk.Button(self.root, text="Login", font=("Arial", 14), command=self.login, bg="lightgreen")
-        login_button.grid(row=3, column=0, pady=10)
-
-        create_account_button = tk.Button(self.root, text="Create Account", font=("Arial", 14), command=self.create_account, bg="lightblue")
-        create_account_button.grid(row=3, column=1, pady=10)
-
-    def login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-
-        if username in self.users and self.users[username] == password:
-            self.root.destroy()  # Close the login window
-            self.open_hostel_management()
-        else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")
-
-    def create_account(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-
-        if not username or not password:
-            messagebox.showerror("Input Error", "Both username and password are required.")
-            return
-
-        if username in self.users:
-            messagebox.showerror("Account Exists", "This username already exists. Please choose another one.")
-            return
-
-        # Create new account
-        self.users[username] = password
-        messagebox.showinfo("Account Created", f"Account created successfully for {username}. Please log in now.")
-    
-    def open_hostel_management(self):
-        # Open the main hostel management window
-        root = tk.Tk()
-        hostel_gui = HostelGUI(root, self.hostel)
-        root.mainloop()
+    def show_popup(self, title, message):
+        popup = Popup(title=title, content=Label(text=message, font_size='18sp'), size_hint=(0.6, 0.3))
+        popup.open()
 
 # Main Application
-def main():
-    hostel = Hostel()
-
-    building = Building("Building A")
-    floor1 = Floor(1)
-    floor2 = Floor(2)
-
-    # Add 100 rooms across floors
-    for i in range(1, 51):
-        floor1.add_room(Room(i, "AC" if i % 2 == 0 else "NON-AC"))
-        floor2.add_room(Room(i + 50, "AC" if i % 2 != 0 else "NON-AC"))
-
-    building.add_floor(floor1)
-    building.add_floor(floor2)
-
-    hostel.add_building(building)
-
-    # Initialize users dictionary for login
-    users = {}
-
-    # Setup Login Screen
-    root = tk.Tk()
-    login_screen = LoginScreen(root, hostel, users)
-    root.mainloop()
-
 if __name__ == "__main__":
-    main()
+    HostelApp().run()
