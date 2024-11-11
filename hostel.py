@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
+from PIL import Image, ImageTk
+import time
 
 # Room, Floor, Building, and Hostel Management System
 class Room:
@@ -100,42 +102,51 @@ class HostelGUI:
         self.current_room = None
         
         self.create_widgets()
+        self.animate_logo()
 
     def create_widgets(self):
+        # Background Image
+        self.bg_image = Image.open(r"background.png")  # Change to your image path
+        self.bg_image = self.bg_image.resize((800, 600), Image.Resampling.LANCZOS)
+        self.bg_image_tk = ImageTk.PhotoImage(self.bg_image)
+
+        bg_label = tk.Label(self.root, image=self.bg_image_tk)
+        bg_label.place(relwidth=1, relheight=1)
+
         # Title Label
-        title_label = tk.Label(self.root, text="Hostel Management System", font=("Arial", 20))
+        title_label = tk.Label(self.root, text="Hostel Management System", font=("Arial", 24, 'bold'), bg="white", fg="black")
         title_label.grid(row=0, column=0, columnspan=2, pady=10)
 
         # Student name input
-        name_label = tk.Label(self.root, text="Student Name:")
+        name_label = tk.Label(self.root, text="Student Name:", font=("Arial", 14), bg="white", fg="black")
         name_label.grid(row=1, column=0, padx=10)
-        self.name_entry = tk.Entry(self.root)
+        self.name_entry = tk.Entry(self.root, font=("Arial", 14))
         self.name_entry.grid(row=1, column=1)
 
         # Room Type selection
-        room_label = tk.Label(self.root, text="Room Type (AC or NON-AC):")
+        room_label = tk.Label(self.root, text="Room Type (AC or NON-AC):", font=("Arial", 14), bg="white", fg="black")
         room_label.grid(row=2, column=0, padx=10)
-        self.room_type_entry = tk.Entry(self.root)
+        self.room_type_entry = tk.Entry(self.root, font=("Arial", 14))
         self.room_type_entry.grid(row=2, column=1)
 
         # Allocate Room Button
-        allocate_button = tk.Button(self.root, text="Allocate Room", command=self.allocate_room)
+        allocate_button = tk.Button(self.root, text="Allocate Room", font=("Arial", 14), command=self.allocate_room, bg="lightblue")
         allocate_button.grid(row=3, column=0, columnspan=2, pady=10)
 
         # Reallocate Room Button
-        reallocate_button = tk.Button(self.root, text="Reallocate Room", command=self.reallocate_room)
+        reallocate_button = tk.Button(self.root, text="Reallocate Room", font=("Arial", 14), command=self.reallocate_room, bg="lightgreen")
         reallocate_button.grid(row=4, column=0, columnspan=2, pady=10)
 
         # Report Button
-        report_button = tk.Button(self.root, text="Generate Room Report", command=self.show_report)
+        report_button = tk.Button(self.root, text="Generate Room Report", font=("Arial", 14), command=self.show_report, bg="lightyellow")
         report_button.grid(row=5, column=0, columnspan=2, pady=10)
 
         # Dashboard Button
-        dashboard_button = tk.Button(self.root, text="Show Dashboard", command=self.show_dashboard)
+        dashboard_button = tk.Button(self.root, text="Show Dashboard", font=("Arial", 14), command=self.show_dashboard, bg="lightcoral")
         dashboard_button.grid(row=6, column=0, columnspan=2, pady=10)
 
         # Listbox to display room status
-        self.room_listbox = tk.Listbox(self.root, width=50, height=10)
+        self.room_listbox = tk.Listbox(self.root, width=50, height=10, font=("Arial", 12))
         self.room_listbox.grid(row=7, column=0, columnspan=2, pady=10)
 
     def allocate_room(self):
@@ -148,9 +159,20 @@ class HostelGUI:
         room = self.hostel.allocate_room(room_type)
         if room:
             self.current_room = room
+            self.animate_room_allocation(room)
             messagebox.showinfo("Room Allocated", f"Room {room.room_number} ({room.room_type}) allocated to {self.student_name}.")
         else:
             messagebox.showwarning("No Room Available", "No rooms of the preferred type are available.")
+
+    def animate_room_allocation(self, room):
+        # Simple animation showing a "room allocated" effect
+        animation_label = tk.Label(self.root, text=f"Room {room.room_number} allocated!", font=("Arial", 16, 'bold'), fg="green", bg="lightyellow")
+        animation_label.grid(row=8, column=0, columnspan=2)
+        for i in range(255, -1, -5):  # Fade-out effect
+            animation_label.config(fg=f"#{i:02x}ff{i:02x}")
+            self.root.update_idletasks()
+            time.sleep(0.05)
+        animation_label.grid_forget()  # Hide the label after animation
 
     def reallocate_room(self):
         if not self.current_room:
@@ -181,6 +203,16 @@ class HostelGUI:
         self.room_listbox.insert(tk.END, f"Occupied Rooms: {dashboard['Occupied Rooms']}")
         self.room_listbox.insert(tk.END, f"Empty Rooms: {dashboard['Empty Rooms']}")
 
+    def animate_logo(self):
+        # Simple fade-in effect for the title label
+        title_label = tk.Label(self.root, text="Hostel Management System", font=("Arial", 24, 'bold'), fg="white")
+        title_label.grid(row=0, column=0, columnspan=2, pady=10)
+        title_label.config(fg="white")
+        for i in range(0, 101, 5):
+            title_label.config(fg=f"#{i:02x}ff{i:02x}")
+            self.root.update_idletasks()
+            time.sleep(0.05)
+
 # Login Screen
 class LoginScreen:
     def __init__(self, root, hostel, users):
@@ -192,33 +224,32 @@ class LoginScreen:
 
     def create_widgets(self):
         # Title Label
-        title_label = tk.Label(self.root, text="Login or Create Account", font=("Arial", 20))
+        title_label = tk.Label(self.root, text="Login or Create Account", font=("Arial", 24), bg="lightblue", fg="black")
         title_label.grid(row=0, column=0, columnspan=2, pady=10)
 
         # Username input
-        username_label = tk.Label(self.root, text="Username:")
+        username_label = tk.Label(self.root, text="Username:", font=("Arial", 14), bg="white")
         username_label.grid(row=1, column=0, padx=10)
-        self.username_entry = tk.Entry(self.root)
+        self.username_entry = tk.Entry(self.root, font=("Arial", 14))
         self.username_entry.grid(row=1, column=1)
 
         # Password input
-        password_label = tk.Label(self.root, text="Password:")
+        password_label = tk.Label(self.root, text="Password:", font=("Arial", 14), bg="white")
         password_label.grid(row=2, column=0, padx=10)
-        self.password_entry = tk.Entry(self.root, show="*")
+        self.password_entry = tk.Entry(self.root, show="*", font=("Arial", 14))
         self.password_entry.grid(row=2, column=1)
 
         # Buttons
-        login_button = tk.Button(self.root, text="Login", command=self.login)
+        login_button = tk.Button(self.root, text="Login", font=("Arial", 14), command=self.login, bg="lightgreen")
         login_button.grid(row=3, column=0, pady=10)
 
-        create_account_button = tk.Button(self.root, text="Create Account", command=self.create_account)
+        create_account_button = tk.Button(self.root, text="Create Account", font=("Arial", 14), command=self.create_account, bg="lightblue")
         create_account_button.grid(row=3, column=1, pady=10)
 
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
 
-        # Check if user exists and password matches
         if username in self.users and self.users[username] == password:
             self.root.destroy()  # Close the login window
             self.open_hostel_management()
@@ -249,17 +280,16 @@ class LoginScreen:
 
 # Main Application
 def main():
-    # Create Hostel with some data
     hostel = Hostel()
 
     building = Building("Building A")
     floor1 = Floor(1)
     floor2 = Floor(2)
 
-    floor1.add_room(Room(101, "AC"))
-    floor1.add_room(Room(102, "NON-AC"))
-    floor2.add_room(Room(201, "AC"))
-    floor2.add_room(Room(202, "NON-AC"))
+    # Add 100 rooms across floors
+    for i in range(1, 51):
+        floor1.add_room(Room(i, "AC" if i % 2 == 0 else "NON-AC"))
+        floor2.add_room(Room(i + 50, "AC" if i % 2 != 0 else "NON-AC"))
 
     building.add_floor(floor1)
     building.add_floor(floor2)
